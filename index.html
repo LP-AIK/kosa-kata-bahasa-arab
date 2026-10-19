@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AQIEN - Petualangan Kosakata Arab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts for playful look -->
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti for Gamification Rewards -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Baloo 2"', 'sans-serif'],
+                        arabic: ['"Amiri"', 'serif'] // Fallback if user has arabic fonts
+                    },
+                    colors: {
+                        'aqien-blue': '#4CA1AF',
+                        'aqien-green': '#A1FFCE',
+                        'aqien-yellow': '#FFD166',
+                        'aqien-red': '#EF476F'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f0f9ff;
+            background-image: radial-gradient(#bae6fd 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .arabic-text {
+            font-size: 2.5rem;
+            line-height: 1.5;
+            direction: rtl;
+        }
+        
+        /* Card Flip Animations for Memory Game */
+        .memory-card {
+            perspective: 1000px;
+            cursor: pointer;
+        }
+        .memory-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .memory-card.flipped .memory-card-inner {
+            transform: rotateY(180deg);
+        }
+        .memory-card-front, .memory-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .memory-card-front {
+            background-color: #FFD166;
+            color: #d97706;
+            font-size: 2rem;
+        }
+        .memory-card-back {
+            background-color: white;
+            transform: rotateY(180deg);
+            border: 4px solid #4CA1AF;
+        }
+
+        /* Shake animation for wrong answers */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .shake-animation {
+            animation: shake 0.5s;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col font-sans selection:bg-yellow-300">
+
+    <!-- Top Navigation / Gamification HUD -->
+    <header class="bg-white shadow-md p-4 sticky top-0 z-50 rounded-b-3xl mx-2 mt-0 border-b-4 border-aqien-blue">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3" onclick="showScreen('home')" style="cursor: pointer;">
+                <div class="bg-aqien-blue text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl border-4 border-white shadow-lg">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-xl leading-tight text-aqien-blue">AQIEN</h1>
+                    <p class="text-xs font-semibold text-slate-500">Level: <span id="user-level" class="text-yellow-500">Pemula</span></p>
+                </div>
+            </div>
+            
+            <div class="flex gap-4">
+                <div class="bg-yellow-100 px-4 py-2 rounded-full flex items-center gap-2 border-2 border-yellow-400 shadow-sm transition-transform hover:scale-105">
+                    <i class="fas fa-star text-yellow-500 text-xl animate-pulse"></i>
+                    <span id="score-display" class="font-bold text-xl text-yellow-700">0</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow p-4 flex flex-col items-center justify-center max-w-4xl mx-auto w-full">
+        
+        <!-- ==================== HOME SCREEN ==================== -->
+        <section id="screen-home" class="w-full flex flex-col items-center space-y-8 animate-fade-in">
+            <div class="text-center space-y-2">
+                <h2 class="text-3xl md:text-4xl font-extrabold text-slate-700">Halo, Sobat Arab! 🌟</h2>
+                <p class="text-lg text-slate-600">Pilih misi belajarmu hari ini</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl px-4">
+                <!-- Menu Item 1 -->
+                <button onclick="showScreen('level-select')" class="bg-white p-6 rounded-3xl shadow-xl border-b-8 border-aqien-blue transform transition hover:-translate-y-2 hover:shadow-2xl flex flex-col items-center gap-4 group">
+                    <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center text-4xl text-aqien-blue group-hover:scale-110 transition-transform">
+                        <i class="fas fa-gamepad"></i>
+                    </div>
+                    <div class="text-center">
+                        <h3 class="text-2xl font-bold text-slate-800">Tebak Kata</h3>
+                        <p class="text-sm text-slate-500">Jawab kuis & kumpulkan bintang!</p>
+                    </div>
+                </button>
+
+                <!-- Menu Item 2 -->
+                <button onclick="initMemoryGame()" class="bg-white p-6 rounded-3xl shadow-xl border-b-8 border-green-500 transform transition hover:-translate-y-2 hover:shadow-2xl flex flex-col items-center gap-4 group">
+                    <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center text-4xl text-green-500 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-clone"></i>
+                    </div>
+                    <div class="text-center">
+                        <h3 class="text-2xl font-bold text-slate-800">Cocokkan Kartu</h3>
+                        <p class="text-sm text-slate-500">Latih ingatanmu, temukan pasangan!</p>
+                    </div>
+                </button>
+                
+                <!-- Menu Item 3 -->
+                <button onclick="showScreen('kamus')" class="bg-white p-6 rounded-3xl shadow-xl border-b-8 border-purple-500 transform transition hover:-translate-y-2 hover:shadow-2xl flex flex-col items-center gap-4 group md:col-span-2">
+                    <div class="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center text-3xl text-purple-500 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <div class="text-center">
+                        <h3 class="text-xl font-bold text-slate-800">Kamus Pintar</h3>
+                        <p class="text-sm text-slate-500">Pelajari kata-katanya dulu yuk</p>
+                    </div>
+                </button>
+            </div>
+        </section>
+
+        <!-- ==================== LEVEL SELECT SCREEN ==================== -->
+        <section id="screen-level-select" class="w-full hidden flex-col items-center max-w-2xl">
+            <div class="w-full flex justify-start items-center mb-6">
+                <button onclick="showScreen('home')" class="bg-white p-3 rounded-full shadow-md text-slate-600 hover:bg-slate-50 transition">
+                    <i class="fas fa-arrow-left"></i> Kembali
+                </button>
+            </div>
+            
+            <div class="text-center space-y-2 mb-8">
+                <h2 class="text-3xl font-extrabold text-slate-700">Peta Misi</h2>
+                <p class="text-slate-600 font-bold">Selesaikan level sebelumnya untuk membuka yang baru!</p>
+            </div>
+
+            <div id="level-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full px-4 pb-8">
+                <!-- Level cards injected by JS -->
+            </div>
+        </section>
+
+        <!-- ==================== KUIS SCREEN ==================== -->
+        <section id="screen-kuis" class="w-full hidden flex-col items-center w-full max-w-xl">
+            <div class="w-full flex justify-between items-center mb-6">
+                <button onclick="showScreen('home')" class="bg-white p-3 rounded-full shadow-md text-slate-600 hover:bg-slate-50 transition">
+                    <i class="fas fa-arrow-left"></i> Kembali
+                </button>
+                <div class="bg-white px-4 py-2 rounded-full shadow-md font-bold text-aqien-blue">
+                    Soal: <span id="quiz-progress">1/5</span>
+                </div>
+            </div>
+
+            <div class="bg-white w-full rounded-3xl shadow-xl p-8 text-center border-4 border-indigo-100">
+                <h3 class="text-lg text-slate-500 mb-2 font-bold uppercase tracking-wider">Apa bahasa Arabnya:</h3>
+                <div id="quiz-question" class="text-4xl font-extrabold text-aqien-blue mb-8 capitalize">
+                    Buku
+                </div>
+
+                <div id="quiz-options" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Options injected by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== COCOKKAN (MEMORY) SCREEN ==================== -->
+        <section id="screen-memory" class="w-full hidden flex-col items-center max-w-2xl">
+            <div class="w-full flex justify-between items-center mb-6">
+                <button onclick="showScreen('home')" class="bg-white p-3 rounded-full shadow-md text-slate-600 hover:bg-slate-50 transition">
+                    <i class="fas fa-arrow-left"></i> Kembali
+                </button>
+                <button onclick="initMemoryGame()" class="bg-green-100 text-green-700 px-4 py-2 rounded-full shadow-md font-bold hover:bg-green-200 transition">
+                    <i class="fas fa-redo"></i> Ulangi
+                </button>
+            </div>
+            
+            <div class="text-center mb-4">
+                <p class="text-slate-600 font-bold">Temukan pasangan Bahasa Arab dan Indonesianya!</p>
+            </div>
+
+            <div id="memory-board" class="grid grid-cols-3 md:grid-cols-4 gap-4 w-full h-[60vh] md:h-[500px]">
+                <!-- Cards injected by JS -->
+            </div>
+        </section>
+
+        <!-- ==================== KAMUS SCREEN ==================== -->
+        <section id="screen-kamus" class="w-full hidden flex-col items-center max-w-2xl">
+            <div class="w-full flex justify-start items-center mb-6">
+                <button onclick="showScreen('home')" class="bg-white p-3 rounded-full shadow-md text-slate-600 hover:bg-slate-50 transition">
+                    <i class="fas fa-arrow-left"></i> Kembali
+                </button>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-6 border-b-4 border-purple-400 pb-2">Kamus Kosakata (Sekolah)</h2>
+            <div id="kamus-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                <!-- Injected by JS -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Custom Alert Modal (No default alert() used) -->
+    <div id="custom-alert" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl transform scale-90 transition-transform duration-300" id="alert-box">
+            <div id="alert-icon" class="text-6xl mb-4">⭐</div>
+            <h3 id="alert-title" class="text-2xl font-bold mb-2 text-slate-800">Hebat!</h3>
+            <p id="alert-message" class="text-slate-600 mb-6">Kamu mendapat 10 bintang!</p>
+            <button onclick="closeAlert()" class="bg-aqien-blue text-white font-bold py-3 px-8 rounded-full w-full hover:bg-blue-600 transition-colors shadow-lg border-b-4 border-blue-800 active:border-b-0 active:translate-y-1">
+                Lanjut <i class="fas fa-play ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- JS Logic -->
+    <script>
+        // --- Data Kosakata & Level ---
+        const levelsData = [
+            { id: 1, title: "Keluarga", icon: "fa-users", bgIcon: "bg-blue-100", textIcon: "text-blue-500", borderCard: "border-blue-400", words: [
+                { id: 101, indo: "Ayah", arab: "أَبٌ", transliteration: "Abun" },
+                { id: 102, indo: "Ibu", arab: "أُمٌّ", transliteration: "Ummun" },
+                { id: 103, indo: "Saudara", arab: "أَخٌ", transliteration: "Akhun" },
+                { id: 104, indo: "Saudari", arab: "أُخْتٌ", transliteration: "Ukhtun" },
+                { id: 105, indo: "Kakek", arab: "جَدٌّ", transliteration: "Jaddun" }
+            ]},
+            { id: 2, title: "Sekolah", icon: "fa-school", bgIcon: "bg-green-100", textIcon: "text-green-500", borderCard: "border-green-400", words: [
+                { id: 201, indo: "Buku", arab: "كِتَابٌ", transliteration: "Kitaabun" },
+                { id: 202, indo: "Pena", arab: "قَلَمٌ", transliteration: "Qalamun" },
+                { id: 203, indo: "Meja", arab: "مَكْتَبٌ", transliteration: "Maktabun" },
+                { id: 204, indo: "Kursi", arab: "كُرْسِيٌّ", transliteration: "Kursiyyun" },
+                { id: 205, indo: "Papan Tulis", arab: "سَبُّوْرَةٌ", transliteration: "Sabburatun" },
+                { id: 206, indo: "Tas", arab: "حَقِيْبَةٌ", transliteration: "Haqiibatun" }
+            ]},
+            { id: 3, title: "Tubuh", icon: "fa-hand-paper", bgIcon: "bg-yellow-100", textIcon: "text-yellow-600", borderCard: "border-yellow-400", words: [
+                { id: 301, indo: "Kepala", arab: "رَأْسٌ", transliteration: "Ra'sun" },
+                { id: 302, indo: "Mata", arab: "عَيْنٌ", transliteration: "'Aynun" },
+                { id: 303, indo: "Hidung", arab: "أَنْفٌ", transliteration: "Anfun" },
+                { id: 304, indo: "Mulut", arab: "فَمٌ", transliteration: "Famun" },
+                { id: 305, indo: "Telinga", arab: "أُذُنٌ", transliteration: "Udzunun" }
+            ]},
+            { id: 4, title: "Warna", icon: "fa-palette", bgIcon: "bg-red-100", textIcon: "text-red-500", borderCard: "border-red-400", words: [
+                { id: 401, indo: "Merah", arab: "أَحْمَرُ", transliteration: "Ahmaru" },
+                { id: 402, indo: "Biru", arab: "أَزْرَقُ", transliteration: "Azraqu" },
+                { id: 403, indo: "Hijau", arab: "أَخْضَرُ", transliteration: "Akhdharu" },
+                { id: 404, indo: "Kuning", arab: "أَصْفَرُ", transliteration: "Ashfaru" },
+                { id: 405, indo: "Hitam", arab: "أَسْوَدُ", transliteration: "Aswadu" }
+            ]},
+            { id: 5, title: "Hewan", icon: "fa-cat", bgIcon: "bg-purple-100", textIcon: "text-purple-500", borderCard: "border-purple-400", words: [
+                { id: 501, indo: "Kucing", arab: "قِطَّةٌ", transliteration: "Qiththatun" },
+                { id: 502, indo: "Anjing", arab: "كَلْبٌ", transliteration: "Kalbun" },
+                { id: 503, indo: "Burung", arab: "طَائِرٌ", transliteration: "Thaa'irun" },
+                { id: 504, indo: "Ikan", arab: "سَمَكَةٌ", transliteration: "Samakatun" },
+                { id: 505, indo: "Kuda", arab: "حِصَانٌ", transliteration: "Hishaanun" }
+            ]},
+            { id: 6, title: "Makanan", icon: "fa-hamburger", bgIcon: "bg-orange-100", textIcon: "text-orange-500", borderCard: "border-orange-400", words: [
+                { id: 601, indo: "Air", arab: "مَاءٌ", transliteration: "Maa'un" },
+                { id: 602, indo: "Susu", arab: "حَلِيْبٌ", transliteration: "Haliibun" },
+                { id: 603, indo: "Roti", arab: "خُبْزٌ", transliteration: "Khubzun" },
+                { id: 604, indo: "Apel", arab: "تُفَّاحَةٌ", transliteration: "Tuffaahatun" },
+                { id: 605, indo: "Pisang", arab: "مَوْزٌ", transliteration: "Mauzun" }
+            ]},
+            { id: 7, title: "Alam", icon: "fa-tree", bgIcon: "bg-teal-100", textIcon: "text-teal-500", borderCard: "border-teal-400", words: [
+                { id: 701, indo: "Matahari", arab: "شَمْسٌ", transliteration: "Syamsun" },
+                { id: 702, indo: "Bulan", arab: "قَمَرٌ", transliteration: "Qamarun" },
+                { id: 703, indo: "Bintang", arab: "نَجْمٌ", transliteration: "Najmun" },
+                { id: 704, indo: "Pohon", arab: "شَجَرَةٌ", transliteration: "Syajaratun" },
+                { id: 705, indo: "Bunga", arab: "زَهْرَةٌ", transliteration: "Zahratun" }
+            ]}
+        ];
+
+        // Flat data untuk Memory Game dan Kamus
+        const vocabData = levelsData.flatMap(level => level.words);
+
+        // --- State Management ---
+        let score = 0;
+        let currentQuizIndex = 0;
+        let quizQuestions = [];
+        let unlockedLevels = 1;
+        let currentLevelId = 1;
+        
+        // --- Utility: Navigation ---
+        function showScreen(screenId) {
+            document.querySelectorAll('main > section').forEach(sec => {
+                sec.classList.add('hidden');
+                sec.classList.remove('flex'); // Pastikan disembunyikan total
+            });
+            const target = document.getElementById(`screen-${screenId}`);
+            target.classList.remove('hidden');
+            target.classList.add('flex');
+            
+            if (screenId === 'level-select') renderLevelSelect();
+            if (screenId === 'kamus') renderKamus();
+        }
+
+        function renderLevelSelect() {
+            const container = document.getElementById('level-container');
+            container.innerHTML = '';
+            
+            levelsData.forEach(level => {
+                const isUnlocked = level.id <= unlockedLevels;
+                const card = document.createElement('button');
+                
+                if (isUnlocked) {
+                    card.className = `bg-white p-4 rounded-2xl shadow-md border-b-4 ${level.borderCard} flex items-center justify-between hover:-translate-y-1 transition transform w-full`;
+                    card.onclick = () => initQuiz(level.id);
+                    card.innerHTML = `
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full ${level.bgIcon} flex items-center justify-center ${level.textIcon} text-xl shadow-inner">
+                                <i class="fas ${level.icon}"></i>
+                            </div>
+                            <div class="text-left">
+                                <h4 class="font-bold text-slate-800 text-lg">Level ${level.id}: ${level.title}</h4>
+                                <p class="text-xs text-slate-500 font-semibold">${level.words.length} Kosakata</p>
+                            </div>
+                        </div>
+                        <div class="text-green-500 text-2xl">
+                            <i class="fas fa-play-circle"></i>
+                        </div>
+                    `;
+                } else {
+                    card.className = `bg-slate-100 p-4 rounded-2xl border-b-4 border-slate-300 flex items-center justify-between opacity-60 cursor-not-allowed w-full`;
+                    card.innerHTML = `
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-slate-300 flex items-center justify-center text-slate-500 text-xl shadow-inner">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <div class="text-left">
+                                <h4 class="font-bold text-slate-500 text-lg">Level ${level.id}</h4>
+                                <p class="text-xs text-slate-400 font-semibold">Terkunci</p>
+                            </div>
+                        </div>
+                    `;
+                }
+                container.appendChild(card);
+            });
+        }
+
+        // --- Utility: Gamification ---
+        function addScore(points) {
+            score += points;
+            const scoreEl = document.getElementById('score-display');
+            scoreEl.innerText = score;
+            scoreEl.classList.add('text-green-500', 'scale-150');
+            setTimeout(() => {
+                scoreEl.classList.remove('text-green-500', 'scale-150');
+            }, 300);
+
+            // Update Level
+            const levelEl = document.getElementById('user-level');
+            if (score >= 200) { levelEl.innerText = "Master Arab"; levelEl.className = "text-purple-500 font-bold"; }
+            else if (score >= 100) { levelEl.innerText = "Pelajar Rajin"; levelEl.className = "text-blue-500 font-bold"; }
+        }
+
+        function triggerConfetti() {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#4CA1AF', '#A1FFCE', '#FFD166', '#EF476F']
+            });
+        }
+
+        // --- Custom Alert System ---
+        function showAlert(type, title, message, callback) {
+            const modal = document.getElementById('custom-alert');
+            const box = document.getElementById('alert-box');
+            const icon = document.getElementById('alert-icon');
+            
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-message').innerText = message;
+            
+            if (type === 'success') {
+                icon.innerHTML = '🎉';
+                document.getElementById('alert-title').classList.replace('text-red-500', 'text-green-500');
+            } else if (type === 'error') {
+                icon.innerHTML = '😅';
+                document.getElementById('alert-title').classList.replace('text-green-500', 'text-red-500');
+            } else if (type === 'finish') {
+                icon.innerHTML = '🏆';
+                document.getElementById('alert-title').classList.replace('text-red-500', 'text-yellow-500');
+            }
+
+            modal.classList.remove('hidden');
+            // Trigger animation
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                box.classList.remove('scale-90');
+                box.classList.add('scale-100');
+            }, 10);
+
+            window.alertCallback = callback;
+        }
+
+        function closeAlert() {
+            const modal = document.getElementById('custom-alert');
+            const box = document.getElementById('alert-box');
+            
+            modal.classList.add('opacity-0');
+            box.classList.remove('scale-100');
+            box.classList.add('scale-90');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                if (typeof window.alertCallback === 'function') {
+                    window.alertCallback();
+                    window.alertCallback = null;
+                }
+            }, 300);
+        }
+
+        // --- Feature 1: Kuis (Tebak Kata) ---
+        function initQuiz(levelId) {
+            currentLevelId = levelId;
+            const levelData = levelsData.find(l => l.id === levelId);
+            
+            // Ambil maksimal 5 soal acak dari level yang dipilih
+            quizQuestions = [...levelData.words].sort(() => 0.5 - Math.random()).slice(0, 5);
+            currentQuizIndex = 0;
+            showScreen('kuis');
+            renderQuiz();
+        }
+
+        function renderQuiz() {
+            const currentQ = quizQuestions[currentQuizIndex];
+            document.getElementById('quiz-progress').innerText = `${currentQuizIndex + 1} / ${quizQuestions.length}`;
+            document.getElementById('quiz-question').innerText = currentQ.indo;
+
+            // Generate options (1 correct, 3 random wrong)
+            let options = [currentQ];
+            let wrongOptions = vocabData.filter(v => v.id !== currentQ.id).sort(() => 0.5 - Math.random()).slice(0, 3);
+            options = [...options, ...wrongOptions].sort(() => 0.5 - Math.random());
+
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+
+            options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "bg-slate-50 border-2 border-slate-200 p-6 rounded-2xl text-center hover:border-aqien-blue hover:bg-blue-50 transition transform hover:-translate-y-1";
+                btn.innerHTML = `
+                    <div class="arabic-text text-slate-800 mb-2">${opt.arab}</div>
+                    <div class="text-sm text-slate-500 font-semibold opacity-0 hover:opacity-100 transition-opacity">(${opt.transliteration})</div>
+                `;
+                btn.onclick = () => checkQuizAnswer(opt.id, currentQ.id, btn);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function checkQuizAnswer(selectedId, correctId, btnElement) {
+            // Disable all buttons to prevent double click
+            const btns = document.getElementById('quiz-options').querySelectorAll('button');
+            btns.forEach(b => b.disabled = true);
+
+            if (selectedId === correctId) {
+                // Correct!
+                btnElement.classList.remove('border-slate-200', 'bg-slate-50');
+                btnElement.classList.add('border-green-500', 'bg-green-100');
+                triggerConfetti();
+                addScore(10);
+                
+                setTimeout(() => {
+                    nextQuiz();
+                }, 1500);
+            } else {
+                // Wrong
+                btnElement.classList.remove('border-slate-200', 'bg-slate-50');
+                btnElement.classList.add('border-red-500', 'bg-red-100', 'shake-animation');
+                
+                // Highlight correct answer
+                btns.forEach(b => {
+                    if(b.onclick.toString().includes(correctId) && b !== btnElement) {
+                        b.classList.add('border-green-500', 'bg-green-50');
+                    }
+                });
+
+                setTimeout(() => {
+                    showAlert('error', 'Yah, Kurang Tepat!', `Jawaban benarnya adalah: ${vocabData.find(v=>v.id === correctId).arab}`, nextQuiz);
+                }, 800);
+            }
+        }
+
+        function nextQuiz() {
+            currentQuizIndex++;
+            if (currentQuizIndex < quizQuestions.length) {
+                renderQuiz();
+            } else {
+                // Buka level selanjutnya jika level saat ini adalah batas tertinggi yang terbuka
+                if (currentLevelId === unlockedLevels && unlockedLevels < levelsData.length) {
+                    unlockedLevels++;
+                }
+                
+                showAlert('finish', 'Level Selesai!', `Kamu telah menyelesaikan level ${currentLevelId}. Terus kumpulkan bintang!`, () => {
+                    showScreen('level-select');
+                });
+            }
+        }
+
+        // --- Feature 2: Memory Game ---
+        let memoryCards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+
+        function initMemoryGame() {
+            showScreen('memory');
+            const board = document.getElementById('memory-board');
+            board.innerHTML = '';
+            flippedCards = [];
+            matchedPairs = 0;
+
+            // Pick 6 random vocab
+            let selectedVocab = [...vocabData].sort(() => 0.5 - Math.random()).slice(0, 6);
+            
+            // Create pairs (Indo & Arab)
+            let cards = [];
+            selectedVocab.forEach(v => {
+                cards.push({ id: v.id, content: v.indo, type: 'indo' });
+                cards.push({ id: v.id, content: v.arab, type: 'arab' });
+            });
+
+            // Shuffle cards
+            cards.sort(() => 0.5 - Math.random());
+            memoryCards = cards;
+
+            // Render
+            cards.forEach((card, index) => {
+                const cardWrapper = document.createElement('div');
+                cardWrapper.className = 'memory-card w-full h-24 md:h-32';
+                cardWrapper.dataset.index = index;
+                
+                const textSize = card.type === 'arab' ? 'arabic-text' : 'font-bold text-xl md:text-2xl';
+                
+                cardWrapper.innerHTML = `
+                    <div class="memory-card-inner">
+                        <div class="memory-card-front flex items-center justify-center">
+                            <i class="fas fa-question text-3xl opacity-50"></i>
+                        </div>
+                        <div class="memory-card-back flex items-center justify-center p-2 text-center">
+                            <span class="${textSize} text-slate-800">${card.content}</span>
+                        </div>
+                    </div>
+                `;
+                
+                cardWrapper.addEventListener('click', () => flipCard(cardWrapper, card));
+                board.appendChild(cardWrapper);
+            });
+        }
+
+        function flipCard(cardEl, cardData) {
+            if (flippedCards.length >= 2 || cardEl.classList.contains('flipped') || cardEl.classList.contains('matched')) return;
+
+            cardEl.classList.add('flipped');
+            flippedCards.push({ el: cardEl, data: cardData });
+
+            if (flippedCards.length === 2) {
+                checkMemoryMatch();
+            }
+        }
+
+        function checkMemoryMatch() {
+            const [card1, card2] = flippedCards;
+            
+            if (card1.data.id === card2.data.id && card1.data.type !== card2.data.type) {
+                // Match
+                card1.el.classList.add('matched');
+                card2.el.classList.add('matched');
+                
+                // Add green border to inner back card
+                card1.el.querySelector('.memory-card-back').classList.replace('border-[#4CA1AF]', 'border-green-500');
+                card2.el.querySelector('.memory-card-back').classList.replace('border-[#4CA1AF]', 'border-green-500');
+                card1.el.querySelector('.memory-card-back').classList.add('bg-green-50');
+                card2.el.querySelector('.memory-card-back').classList.add('bg-green-50');
+
+                addScore(20); // Bonus score for memory
+                matchedPairs++;
+                flippedCards = [];
+
+                if (matchedPairs === 6) {
+                    setTimeout(() => {
+                        triggerConfetti();
+                        showAlert('finish', 'Luar Biasa!', 'Kamu berhasil menemukan semua pasangan kartu!', () => {
+                            showScreen('home');
+                        });
+                    }, 500);
+                }
+            } else {
+                // No match, flip back
+                setTimeout(() => {
+                    card1.el.classList.remove('flipped');
+                    card2.el.classList.remove('flipped');
+                    flippedCards = [];
+                }, 1000);
+            }
+        }
+
+        // --- Feature 3: Kamus ---
+        function renderKamus() {
+            const container = document.getElementById('kamus-list');
+            container.innerHTML = '';
+            
+            vocabData.forEach(v => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between";
+                card.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-500 text-xl font-bold">
+                            ${v.indo.charAt(0)}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-700">${v.indo}</h4>
+                            <p class="text-sm text-slate-500 italic">${v.transliteration}</p>
+                        </div>
+                    </div>
+                    <div class="arabic-text text-aqien-blue">
+                        ${v.arab}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+    </script>
+</body>
+</html>
